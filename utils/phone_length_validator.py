@@ -91,7 +91,7 @@ COUNTRY_PHONE_LENGTHS = {
     # Americas
     "AR": (10, 12),  # Argentina
     "BR": (12, 13),  # Brazil
-    "CA": (10, 10),  # Canada
+    "CA": (11, 11),  # Canada
     "CL": (10, 11),  # Chile
     "CO": (10, 10),  # Colombia
     "MX": (12, 12),  # Mexico
