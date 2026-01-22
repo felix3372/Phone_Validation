@@ -86,6 +86,7 @@ st.markdown("""
         padding: 1rem 1.5rem;
         font-size: 1.1rem;
         transition: all 0.3s ease;
+        height: 58px;
     }
     
     .stTextInput > div > div > input:focus {
@@ -93,10 +94,17 @@ st.markdown("""
         box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
     }
     
+    /* Fix column alignment */
+    [data-testid="column"] {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+    }
+    
     /* Button styling */
     .stButton > button {
         border-radius: 12px;
-        padding: 0.75rem 2rem;
+        padding: 1rem 2rem;
         font-weight: 600;
         font-size: 1.05rem;
         border: none;
@@ -104,6 +112,8 @@ st.markdown("""
         color: white;
         transition: all 0.3s ease;
         box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        height: 58px;
+        width: 100%;
     }
     
     .stButton > button:hover {
@@ -475,7 +485,6 @@ with col1:
     )
 
 with col2:
-    st.markdown("<div style='margin-top: 0.5rem;'></div>", unsafe_allow_html=True)
     validate_button = st.button("🔍 Validate", type="primary", use_container_width=True)
 
 if phone_input and validate_button:
