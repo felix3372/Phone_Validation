@@ -223,14 +223,15 @@ def validate_phone_length(phone_number, country_code):
         }
 
 
+import phonenumbers
+
 def is_tollfree_number(phone_number, country_name=None, country_code=None):
     """
-    Check if a phone number is a toll-free number
-    Simple logic: After removing country dial code, if first 3 digits are '800' or first 4 digits are '0800', it's toll-free
+    Check if a phone number is a toll-free number using the phonenumbers library
     
     Args:
         phone_number (str): The phone number to check (can be in E.164 format or local format)
-        country_name (str, optional): Full country name (not used in simple logic, kept for compatibility)
+        country_name (str, optional): Full country name (not used, kept for compatibility)
         country_code (str, optional): ISO 3166-1 alpha-2 country code (e.g., 'US', 'AU')
     
     Returns:
@@ -247,38 +248,55 @@ def is_tollfree_number(phone_number, country_name=None, country_code=None):
             'message': 'No phone number provided'
         }
     
-    # Clean the phone number
-    phone_str = str(phone_number).strip()
-    phone_str = phone_str.replace('+', '').replace(' ', '').replace('-', '').replace('(', '').replace(')', '')
+    try:
+        # Parse the phone number
+        # If we have a country code, use it as the region hint
+        parsed_number = phonenumbers.parse(phone_number, country_code)
+        
+        # Check if it's a valid number
+        if not phonenumbers.is_valid_number(parsed_number):
+            return {
+                'is_tollfree': False,
+                'matched_prefix': None,
+                'message': 'Invalid phone number'
+            }
+        
+        # Get the number type
+        number_type = phonenumbers.number_type(parsed_number)
+        
+        # Check if it's toll-free
+        is_tollfree = (number_type == phonenumbers.PhoneNumberType.TOLL_FREE)
+        
+        if is_tollfree:
+            # Extract the prefix for display
+            # Get the national number and extract prefix
+            national_number = str(parsed_number.national_number)
+            prefix = national_number[:4] if len(national_number) >= 4 else national_number[:3]
+            
+            return {
+                'is_tollfree': True,
+                'matched_prefix': prefix,
+                'message': f'Toll-free number (verified)'
+            }
+        else:
+            return {
+                'is_tollfree': False,
+                'matched_prefix': None,
+                'message': 'Not a toll-free number'
+            }
     
-    # Remove country dial code if present
-    if country_code:
-        country_dial = COUNTRY_DIAL_CODES.get(country_code.lower(), "")
-        if country_dial and phone_str.startswith(country_dial):
-            phone_str = phone_str[len(country_dial):]
-    
-    # Simple universal toll-free check
-    # Check if first 4 digits are '0800'
-    if phone_str.startswith('0800'):
+    except phonenumbers.phonenumberutil.NumberParseException as e:
         return {
-            'is_tollfree': True,
-            'matched_prefix': '0800',
-            'message': 'Toll-free number (prefix: 0800)'
+            'is_tollfree': False,
+            'matched_prefix': None,
+            'message': f'Error parsing number: {str(e)}'
         }
-    
-    # Check if first 3 digits are '800'
-    if phone_str.startswith('800'):
+    except Exception as e:
         return {
-            'is_tollfree': True,
-            'matched_prefix': '800',
-            'message': 'Toll-free number (prefix: 800)'
+            'is_tollfree': False,
+            'matched_prefix': None,
+            'message': f'Error: {str(e)}'
         }
-    
-    return {
-        'is_tollfree': False,
-        'matched_prefix': None,
-        'message': 'Not a toll-free number'
-    }
 
 
 def get_country_length_info(country_code):
