@@ -450,12 +450,6 @@ with tab2:
                 mime="application/json",
                 use_container_width=True
             )
-                    label="📥 Download JSON",
-                    data=json_data,
-                    file_name="phone_validation_results.json",
-                    mime="application/json",
-                    use_container_width=True
-                )
 
 with tab3:
     st.subheader("ℹ️ How to Use This App")
