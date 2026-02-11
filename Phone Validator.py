@@ -193,7 +193,11 @@ def checkphone(phone_input, display=True):
             
             with col_status3:
                 if is_tollfree:
-                    st.warning(f"📞 {tollfree_result['message']}")
+                    # Different display for universal vs country-specific
+                    if tollfree_result.get('type') == 'universal':
+                        st.warning(f"🌐 {tollfree_result['message']}")
+                    else:
+                        st.warning(f"📞 {tollfree_result['message']}")
                 else:
                     st.info("✓ Not toll-free")
             
@@ -231,6 +235,7 @@ def checkphone(phone_input, display=True):
             "is_suspicious": is_suspicious,
             "is_tollfree": is_tollfree,
             "tollfree_prefix": tollfree_result['matched_prefix'],
+            "tollfree_type": tollfree_result.get('type', None),
             "country": country if country else "Unknown",
             "region_code": region_code if region_code else "Unknown",
             "carrier": sim_carrier if sim_carrier else "Unknown",
@@ -251,6 +256,7 @@ def checkphone(phone_input, display=True):
             "is_suspicious": False,
             "is_tollfree": False,
             "tollfree_prefix": None,
+            "tollfree_type": None,
             "country": "Error",
             "region_code": "Error",
             "carrier": "Error",
@@ -458,9 +464,15 @@ with tab3:
     
     **Toll-Free Detection:**
     - Identifies toll-free/freephone numbers
+    - Detects **Universal** toll-free (+800, +808)
+    - Detects **Country-specific** toll-free
     - 20+ countries with toll-free data
     - Common prefixes: 800, 888, 1800, 0800, etc.
-    - Examples: US (800, 888, 877), AU (1800, 1300), UK (800, 808)
+    - Examples: 
+      - Universal: +800 XXXX XXXX (IFS)
+      - US: +1-800-XXX-XXXX
+      - AU: +61-1800-XXX-XXX
+      - UK: +44-800-XXX-XXXX
     
     **Suspicious Detection:**
     - Flags numbers with last 5 identical digits
@@ -478,6 +490,7 @@ with tab3:
     - Oceania: 2 countries
     
     **Toll-Free Detection Coverage:**
+    - **Universal/Global**: International Freephone Service (+800, +808)
     - North America: US, Canada, Mexico
     - Europe: UK, Germany, France, Italy, Spain, Netherlands, Sweden, Switzerland
     - Asia Pacific: Australia, New Zealand, India, Japan, China, Singapore, Hong Kong
@@ -504,20 +517,28 @@ with tab3:
     
     ### 📞 Toll-Free Number Examples
     
+    **Universal/International (Works Globally):**
+    - +800-XXXX-XXXX (International Freephone Service - IFS)
+    - +808-XXXX-XXXX (International Shared Cost Service - ISCS)
+    - These use their own country codes (800, 808)
+    - Can be called from multiple countries
+    
     **United States/Canada:**
-    - 1-800-XXX-XXXX (most common)
-    - 1-888-XXX-XXXX, 1-877-XXX-XXXX, 1-866-XXX-XXXX
+    - +1-800-XXX-XXXX (most common)
+    - +1-888-XXX-XXXX, +1-877-XXX-XXXX, +1-866-XXX-XXXX
     
     **Australia:**
-    - 1800-XXX-XXX (fully free)
-    - 1300-XXX-XXX (local call rate)
+    - +61-1800-XXX-XXX (fully free)
+    - +61-1300-XXX-XXX (local call rate)
     
     **United Kingdom:**
-    - 0800-XXX-XXXX (freephone)
-    - 0808-XXX-XXXX (freephone)
+    - +44-800-XXX-XXXX (freephone)
+    - +44-808-XXX-XXXX (freephone)
     
     **Germany/France/Italy:**
-    - 800-XXX-XXXX
+    - +49-800-XXX-XXXX (Germany)
+    - +33-800-XXX-XXXX (France)
+    - +39-800-XXX-XXXX (Italy)
     """)
 
 # ---- Footer ----
