@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 import pycountry
 from io import BytesIO
+import csv
 
 # Add utils to path
 sys.path.append(str(Path(__file__).parent))
@@ -216,18 +217,16 @@ def checkphone(phone_input, display=True):
             with col2:
                 st.write(f"**Carrier:** {sim_carrier if sim_carrier else 'Unknown'}")
                 st.write(f"**Timezone:** {tz_str}")
+                # FIXED: expected_range is now a string, not a tuple
                 if length_validation['expected_range']:
-                    min_len, max_len = length_validation['expected_range']
-                    if min_len == max_len:
-                        st.write(f"**Expected Length:** {min_len} digits")
-                    else:
-                        st.write(f"**Expected Length:** {min_len}-{max_len} digits")
+                    st.write(f"**Expected Length:** {length_validation['expected_range']} digits")
             
             with col3:
                 st.write(f"**International:** {international_format}")
                 st.write(f"**E.164:** {e164_format}")
                 st.write(f"**Actual Length:** {length_validation['actual_length']} digits")
         
+        # FIXED: expected_range is already a string like "10-11"
         return {
             "original": phone_input,
             "is_valid": is_valid,
@@ -243,7 +242,7 @@ def checkphone(phone_input, display=True):
             "e164": e164_format,
             "timezone": tz_str,
             "actual_length": length_validation['actual_length'],
-            "expected_length": f"{length_validation['expected_range'][0]}-{length_validation['expected_range'][1]}" if length_validation['expected_range'] else "Unknown"
+            "expected_length": length_validation['expected_range'] if length_validation['expected_range'] else "Unknown"
         }
         
     except Exception as e:
@@ -396,7 +395,8 @@ with tab2:
             col_x, col_y, col_z = st.columns(3)
             
             with col_x:
-                csv_data = results_df.to_csv(index=False).encode('utf-8')
+                # FIXED: Use quoting to prevent CSV interpretation issues
+                csv_data = results_df.to_csv(index=False, quoting=csv.QUOTE_NONNUMERIC).encode('utf-8')
                 st.download_button(
                     label="📥 Download CSV",
                     data=csv_data,
@@ -464,38 +464,14 @@ with tab3:
     
     **Toll-Free Detection:**
     - Identifies toll-free/freephone numbers
-    - Detects **Universal** toll-free (+800, +808)
-    - Detects **Country-specific** toll-free
-    - 20+ countries with toll-free data
+    - Uses Google's phonenumbers library
+    - Accurate detection for 200+ countries
     - Common prefixes: 800, 888, 1800, 0800, etc.
-    - Examples: 
-      - Universal: +800 XXXX XXXX (IFS)
-      - US: +1-800-XXX-XXXX
-      - AU: +61-1800-XXX-XXX
-      - UK: +44-800-XXX-XXXX
     
     **Suspicious Detection:**
     - Flags numbers with last 5 identical digits
     - Examples: 00000, 11111, 22222, etc.
     - Useful for identifying test/fake numbers
-    
-    ### 🌍 Supported Countries
-    
-    **Length Validation Coverage:**
-    - Europe: 38 countries
-    - Africa: 14 countries
-    - Asia: 15 countries
-    - Americas: 8 countries
-    - Middle East: 7 countries
-    - Oceania: 2 countries
-    
-    **Toll-Free Detection Coverage:**
-    - **Universal/Global**: International Freephone Service (+800, +808)
-    - North America: US, Canada, Mexico
-    - Europe: UK, Germany, France, Italy, Spain, Netherlands, Sweden, Switzerland
-    - Asia Pacific: Australia, New Zealand, India, Japan, China, Singapore, Hong Kong
-    - Latin America: Brazil, Argentina, Chile
-    - Africa: South Africa
     
     ### 💡 Tips
     
@@ -504,41 +480,7 @@ with tab3:
     - Empty lines are automatically skipped
     - Leading/trailing whitespace is trimmed
     - Export formats preserve all validation data
-    - Toll-free numbers are identified based on their prefix
-    
-    ### ⚠️ Important Notes
-    
-    - Format can be valid while length is invalid
-    - Some countries accept variable lengths
-    - Toll-free detection is based on prefix patterns
-    - Suspicious flag is based on pattern detection
-    - Carrier information may not always be available
-    - Some toll-free prefixes may vary by region within a country
-    
-    ### 📞 Toll-Free Number Examples
-    
-    **Universal/International (Works Globally):**
-    - +800-XXXX-XXXX (International Freephone Service - IFS)
-    - +808-XXXX-XXXX (International Shared Cost Service - ISCS)
-    - These use their own country codes (800, 808)
-    - Can be called from multiple countries
-    
-    **United States/Canada:**
-    - +1-800-XXX-XXXX (most common)
-    - +1-888-XXX-XXXX, +1-877-XXX-XXXX, +1-866-XXX-XXXX
-    
-    **Australia:**
-    - +61-1800-XXX-XXX (fully free)
-    - +61-1300-XXX-XXX (local call rate)
-    
-    **United Kingdom:**
-    - +44-800-XXX-XXXX (freephone)
-    - +44-808-XXX-XXXX (freephone)
-    
-    **Germany/France/Italy:**
-    - +49-800-XXX-XXXX (Germany)
-    - +33-800-XXX-XXXX (France)
-    - +39-800-XXX-XXXX (Italy)
+    - Toll-free numbers are accurately detected using industry-standard library
     """)
 
 # ---- Footer ----
