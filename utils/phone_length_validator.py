@@ -81,10 +81,10 @@ COUNTRY_PHONE_LENGTHS = {
     "KZ": (10, 11),  # Kazakhstan
     "KR": (9, 11),   # South Korea
     "MY": (10, 11),  # Malaysia
-    "PH": (11, 11),  # Philippines
+    "PH": (11, 12),  # Philippines
     "SG": (10, 10),  # Singapore
     "LK": (11, 11),  # Sri Lanka
-    "TW": (12, 12),  # Taiwan
+    "TW": (11, 12),  # Taiwan
     "TH": (10, 11),  # Thailand
     "VN": (12, 12),  # Vietnam
     
@@ -97,6 +97,7 @@ COUNTRY_PHONE_LENGTHS = {
     "MX": (12, 12),  # Mexico
     "PE": (10, 11),  # Peru
     "US": (11, 11),  # United States
+    "UY": (11,11), #Uruguay
     
     # Oceania
     "AU": (11, 11),  # Australia
@@ -133,7 +134,7 @@ def validate_phone_length(phone_number, country_code):
         if is_valid:
             message = f"✓ Length is valid ({actual_length} digits)"
         else:
-            message = "Invalid Length as per MIS format"
+            message = "Invalid Phone Number Length"
         
         return {
             'is_valid_length': is_valid,
