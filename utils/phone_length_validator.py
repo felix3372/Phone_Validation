@@ -4,6 +4,8 @@ Validates phone numbers based on country-specific length requirements
 and detects toll-free numbers
 """
 
+import phonenumbers
+
 # Country-specific phone number length requirements (min, max)
 # Based on complete validation data - 90+ countries
 COUNTRY_PHONE_LENGTHS = {
@@ -105,44 +107,6 @@ COUNTRY_PHONE_LENGTHS = {
     "NZ": (10, 10),  # New Zealand
 }
 
-# Toll-free number prefixes by country
-# Comprehensive list of toll-free prefixes worldwide
-TOLLFREE_PREFIXES = {
-    # North America
-    "united states": ["800", "888", "877", "866", "855", "844", "833", "822", "811", "899"],
-    "canada": ["800", "888", "877", "866", "855", "844", "833", "822", "811", "899"],
-    "mexico": ["800"],
-    
-    # Europe
-    "united kingdom": ["800", "808"],
-    "germany": ["800"],
-    "france": ["800"],
-    "italy": ["800"],
-    "netherlands": ["0800"],
-    "spain": ["900"],
-    "sweden": ["020"],
-    "switzerland": ["0800"],
-    
-    # Asia Pacific
-    "australia": ["1800", "1300", "800", "300"],
-    "new zealand": ["0800"],
-    "india": ["1800"],
-    "japan": ["0120", "0800"],
-    "china": ["400", "800"],
-    "singapore": ["1800", "800"],
-    "hong kong": ["800"],
-    
-    # Latin America
-    "brazil": ["0800"],
-    "argentina": ["0800"],
-    "chile": ["800"],
-    
-    # Africa
-    "south africa": ["0800"],
-    
-    # Add more countries as needed
-}
-
 # Country dial codes mapping (ISO alpha-2 to dial code)
 COUNTRY_DIAL_CODES = {
     # Americas
@@ -188,7 +152,7 @@ def validate_phone_length(phone_number, country_code):
         dict: {
             'is_valid_length': bool,
             'actual_length': int,
-            'expected_range': tuple or None,
+            'expected_range': str or None,
             'message': str
         }
     """
@@ -207,10 +171,11 @@ def validate_phone_length(phone_number, country_code):
         else:
             message = "Invalid Phone Number Length"
         
+        # Return as simple string "10-11" (CSV-safe, won't be interpreted as date)
         return {
             'is_valid_length': is_valid,
             'actual_length': actual_length,
-            'expected_range': f"{min_length} to {max_length} digits",
+            'expected_range': f"{min_length}-{max_length}",
             'message': message
         }
     else:
@@ -218,12 +183,10 @@ def validate_phone_length(phone_number, country_code):
         return {
             'is_valid_length': None,  # Unknown
             'actual_length': actual_length,
-            'expected_range': None,
+            'expected_range': "Not defined",
             'message': "Length Not Pre-Defined"
         }
 
-
-import phonenumbers
 
 def is_tollfree_number(phone_number, country_name=None, country_code=None):
     """
@@ -276,7 +239,7 @@ def is_tollfree_number(phone_number, country_name=None, country_code=None):
             return {
                 'is_tollfree': True,
                 'matched_prefix': prefix,
-                'message': f'Toll-free number (verified)'
+                'message': 'Toll-free number (verified)'
             }
         else:
             return {
@@ -324,21 +287,6 @@ def add_country_length(country_code, min_length, max_length):
     COUNTRY_PHONE_LENGTHS[country_code] = (min_length, max_length)
 
 
-def add_tollfree_prefix(country_key, prefix):
-    """
-    Add a toll-free prefix for a country
-    
-    Args:
-        country_key (str): Country name in lowercase (e.g., 'united states')
-        prefix (str): Toll-free prefix to add (e.g., '800')
-    """
-    country_key = country_key.lower()
-    if country_key not in TOLLFREE_PREFIXES:
-        TOLLFREE_PREFIXES[country_key] = []
-    if prefix not in TOLLFREE_PREFIXES[country_key]:
-        TOLLFREE_PREFIXES[country_key].append(prefix)
-
-
 def get_all_countries():
     """
     Get all countries with length validation data
@@ -347,13 +295,3 @@ def get_all_countries():
         dict: Dictionary of country codes and their length requirements
     """
     return COUNTRY_PHONE_LENGTHS.copy()
-
-
-def get_all_tollfree_countries():
-    """
-    Get all countries with toll-free detection data
-    
-    Returns:
-        dict: Dictionary of country names and their toll-free prefixes
-    """
-    return TOLLFREE_PREFIXES.copy()
