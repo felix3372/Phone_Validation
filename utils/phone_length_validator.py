@@ -203,10 +203,11 @@ def validate_phone_length(phone_number, country_code):
 def is_tollfree_number(phone_number, country_name=None, country_code=None):
     """
     Check if a phone number is a toll-free number
+    Simple logic: After removing country dial code, if first 3 digits are '800' or first 4 digits are '0800', it's toll-free
     
     Args:
         phone_number (str): The phone number to check (can be in E.164 format or local format)
-        country_name (str, optional): Full country name (e.g., 'United States', 'Australia')
+        country_name (str, optional): Full country name (not used in simple logic, kept for compatibility)
         country_code (str, optional): ISO 3166-1 alpha-2 country code (e.g., 'US', 'AU')
     
     Returns:
@@ -227,79 +228,28 @@ def is_tollfree_number(phone_number, country_name=None, country_code=None):
     phone_str = str(phone_number).strip()
     phone_str = phone_str.replace('+', '').replace(' ', '').replace('-', '').replace('(', '').replace(')', '')
     
-    # Determine country key for lookup
-    country_key = None
-    
-    # Try country name first (lowercase)
-    if country_name:
-        country_key = str(country_name).strip().lower()
-    
-    # If we have country code, try to map it to country name
-    elif country_code:
-        country_code_upper = country_code.upper()
-        # Map common country codes to full names
-        code_to_name = {
-            'US': 'united states',
-            'CA': 'canada',
-            'GB': 'united kingdom',
-            'AU': 'australia',
-            'NZ': 'new zealand',
-            'IN': 'india',
-            'DE': 'germany',
-            'FR': 'france',
-            'IT': 'italy',
-            'ES': 'spain',
-            'NL': 'netherlands',
-            'SE': 'sweden',
-            'CH': 'switzerland',
-            'MX': 'mexico',
-            'BR': 'brazil',
-            'AR': 'argentina',
-            'CL': 'chile',
-            'CN': 'china',
-            'JP': 'japan',
-            'KR': 'south korea',
-            'SG': 'singapore',
-            'HK': 'hong kong',
-            'ZA': 'south africa',
-        }
-        country_key = code_to_name.get(country_code_upper, '').lower()
-    
-    # Get toll-free prefixes for this country
-    prefixes = TOLLFREE_PREFIXES.get(country_key, [])
-    
-    if not prefixes:
-        return {
-            'is_tollfree': False,
-            'matched_prefix': None,
-            'message': 'Country not in toll-free database'
-        }
-    
     # Remove country dial code if present
     if country_code:
         country_dial = COUNTRY_DIAL_CODES.get(country_code.lower(), "")
         if country_dial and phone_str.startswith(country_dial):
             phone_str = phone_str[len(country_dial):]
     
-    # Check if phone number starts with any toll-free prefix
-    for prefix in prefixes:
-        if phone_str.startswith(prefix):
-            return {
-                'is_tollfree': True,
-                'matched_prefix': prefix,
-                'message': f'Toll-free number (prefix: {prefix})'
-            }
+    # Simple universal toll-free check
+    # Check if first 4 digits are '0800'
+    if phone_str.startswith('0800'):
+        return {
+            'is_tollfree': True,
+            'matched_prefix': '0800',
+            'message': 'Toll-free number (prefix: 0800)'
+        }
     
-    # Universal toll-free pattern check (fallback for countries not in database)
-    # These patterns are widely used globally as toll-free prefixes
-    universal_patterns = ['800', '0800']
-    for pattern in universal_patterns:
-        if phone_str.startswith(pattern):
-            return {
-                'is_tollfree': True,
-                'matched_prefix': pattern,
-                'message': f'Likely toll-free (universal pattern: {pattern})'
-            }
+    # Check if first 3 digits are '800'
+    if phone_str.startswith('800'):
+        return {
+            'is_tollfree': True,
+            'matched_prefix': '800',
+            'message': 'Toll-free number (prefix: 800)'
+        }
     
     return {
         'is_tollfree': False,
