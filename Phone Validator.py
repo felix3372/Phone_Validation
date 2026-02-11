@@ -9,7 +9,7 @@ from io import BytesIO
 
 # Add utils to path
 sys.path.append(str(Path(__file__).parent))
-from utils.phone_length_validator import validate_phone_length
+from utils.phone_length_validator import validate_phone_length, is_tollfree_number
 
 # Page configuration
 st.set_page_config(
@@ -123,7 +123,7 @@ st.markdown("""
 st.markdown("""
 <div class="section">
   <div class="section-title">📱 What is this?</div>
-  Validate phone numbers with country-specific length requirements, carrier detection, and suspicious number flagging — consistent with Inspectra's QA automation UX.
+  Validate phone numbers with country-specific length requirements, carrier detection, toll-free detection, and suspicious number flagging — consistent with Inspectra's QA automation UX.
 </div>
 """, unsafe_allow_html=True)
 
@@ -163,11 +163,19 @@ def checkphone(phone_input, display=True):
         international_format = phonenumbers.format_number(parsed_number, phonenumbers.PhoneNumberFormat.INTERNATIONAL)
         e164_format = phonenumbers.format_number(parsed_number, phonenumbers.PhoneNumberFormat.E164)
         
+        # Length validation
         length_validation = validate_phone_length(e164_format, region_code)
+        
+        # Suspicious pattern check
         is_suspicious = check_suspicious(e164_format)
         
+        # Toll-free detection
+        tollfree_result = is_tollfree_number(e164_format, country_name=country, country_code=region_code)
+        is_tollfree = tollfree_result['is_tollfree']
+        
         if display:
-            col_status1, col_status2 = st.columns(2)
+            # First row: Valid format, Length, Toll-free
+            col_status1, col_status2, col_status3 = st.columns(3)
             
             with col_status1:
                 if is_valid:
@@ -183,9 +191,17 @@ def checkphone(phone_input, display=True):
                 else:
                     st.info(f"ℹ️ {length_validation['message']}")
             
+            with col_status3:
+                if is_tollfree:
+                    st.warning(f"📞 {tollfree_result['message']}")
+                else:
+                    st.info("✓ Not toll-free")
+            
+            # Suspicious warning (separate row if needed)
             if is_suspicious:
                 st.warning("⚠️ Suspicious: Last 5 digits are identical")
             
+            # Information columns
             col1, col2, col3 = st.columns(3)
             
             with col1:
@@ -213,6 +229,8 @@ def checkphone(phone_input, display=True):
             "is_valid": is_valid,
             "is_valid_length": length_validation['is_valid_length'],
             "is_suspicious": is_suspicious,
+            "is_tollfree": is_tollfree,
+            "tollfree_prefix": tollfree_result['matched_prefix'],
             "country": country if country else "Unknown",
             "region_code": region_code if region_code else "Unknown",
             "carrier": sim_carrier if sim_carrier else "Unknown",
@@ -220,30 +238,27 @@ def checkphone(phone_input, display=True):
             "e164": e164_format,
             "timezone": tz_str,
             "actual_length": length_validation['actual_length'],
-            "expected_length": f"{length_validation['expected_range'][0]}-{length_validation['expected_range'][1]}" 
-                              if length_validation['expected_range'] and length_validation['expected_range'][0] != length_validation['expected_range'][1]
-                              else str(length_validation['expected_range'][0]) if length_validation['expected_range'] else "N/A",
-            "length_message": length_validation['message']
+            "expected_length": f"{length_validation['expected_range'][0]}-{length_validation['expected_range'][1]}" if length_validation['expected_range'] else "Unknown"
         }
-
-    except phonenumbers.NumberParseException as e:
+        
+    except Exception as e:
         if display:
-            st.error(f"❌ Error parsing number: {e}")
+            st.error(f"❌ Error parsing number: {str(e)}")
         return {
             "original": phone_input,
             "is_valid": False,
             "is_valid_length": False,
             "is_suspicious": False,
+            "is_tollfree": False,
+            "tollfree_prefix": None,
             "country": "Error",
             "region_code": "Error",
             "carrier": "Error",
-            "international": "Error",
-            "e164": "Error",
+            "international": phone_input,
+            "e164": phone_input,
             "timezone": "Error",
-            "actual_length": "Error",
-            "expected_length": "Error",
-            "length_message": "Error parsing number",
-            "error": str(e)
+            "actual_length": 0,
+            "expected_length": "Error"
         }
 
 # ---------- Sidebar ----------
@@ -252,6 +267,7 @@ with st.sidebar:
     show_carrier = st.checkbox("Show Carrier Information", value=True)
     show_timezone = st.checkbox("Show Timezone", value=True)
     flag_suspicious = st.checkbox("Flag Suspicious Numbers", value=True)
+    flag_tollfree = st.checkbox("Flag Toll-Free Numbers", value=True)
     
     st.divider()
     st.header("💡 About Validation")
@@ -259,14 +275,21 @@ with st.sidebar:
     **Phone Number Validation:**
     - Format validation using international standards
     - Country-specific length requirements
+    - Toll-free number detection
     - Suspicious number detection
-    - 84+ countries supported
+    - 90+ countries supported
     
     **Validation Checks:**
     - Format correctness
     - Length validation
+    - Toll-free prefix detection
     - Last 5 digits pattern
     - Country code verification
+    
+    **Toll-Free Numbers:**
+    - Detects toll-free/freephone numbers
+    - Covers 20+ countries
+    - Common prefixes: 800, 1800, 0800, etc.
     
     **Suspicious Numbers:**
     - Last 5 digits identical (e.g., 00000, 11111)
@@ -292,7 +315,7 @@ with tab1:
     with col2:
         st.write("")
         st.write("")
-        validate_button = st.button("🔍 Validate", type="primary", width="stretch")
+        validate_button = st.button("🔍 Validate", type="primary", use_container_width=True)
     
     if phone_input and validate_button:
         st.markdown("---")
@@ -307,11 +330,11 @@ with tab2:
         batch_input = st.text_area(
             "Enter multiple phone numbers (one per line):",
             height=300,
-            placeholder="Example:\n+61872252566\n+12025551234\n+441234567890\n+919876543210",
+            placeholder="Example:\n+61872252566\n+18005551234\n+441234567890\n+919876543210",
             help="Enter one phone number per line"
         )
         
-        if st.button("🚀 Validate Numbers", type="primary", width="stretch"):
+        if st.button("🚀 Validate Numbers", type="primary", use_container_width=True):
             if batch_input.strip():
                 phone_numbers = [line.strip() for line in batch_input.split('\n') if line.strip()]
                 
@@ -340,10 +363,10 @@ with tab2:
             st.markdown(f'<div class="metric-card">✅ Validated {len(results_df)} phone numbers successfully!</div>', 
                        unsafe_allow_html=True)
             
-            st.dataframe(results_df, width="stretch", height=300)
+            st.dataframe(results_df, use_container_width=True, height=300)
             
             # Summary stats
-            col_a, col_b, col_c, col_d, col_e = st.columns(5)
+            col_a, col_b, col_c, col_d, col_e, col_f = st.columns(6)
             with col_a:
                 st.metric("Total", len(results_df))
             with col_b:
@@ -352,9 +375,12 @@ with tab2:
                 valid_length_count = results_df[results_df['is_valid_length'] == True].shape[0]
                 st.metric("Valid Length", valid_length_count)
             with col_d:
+                tollfree_count = results_df['is_tollfree'].sum()
+                st.metric("Toll-Free", tollfree_count)
+            with col_e:
                 suspicious_count = results_df['is_suspicious'].sum()
                 st.metric("Suspicious", suspicious_count)
-            with col_e:
+            with col_f:
                 invalid_count = (~results_df['is_valid']).sum()
                 st.metric("Invalid", invalid_count)
             
@@ -369,7 +395,7 @@ with tab2:
                     data=csv_data,
                     file_name="phone_validation_results.csv",
                     mime="text/csv",
-                    width="stretch"
+                    use_container_width=True
                 )
             
             with col_y:
@@ -382,7 +408,7 @@ with tab2:
                     data=output,
                     file_name="phone_validation_results.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    width="stretch"
+                    use_container_width=True
                 )
             
             with col_z:
@@ -392,7 +418,7 @@ with tab2:
                     data=json_data,
                     file_name="phone_validation_results.json",
                     mime="application/json",
-                    width="stretch"
+                    use_container_width=True
                 )
 
 with tab3:
@@ -403,7 +429,7 @@ with tab3:
     **1. Single Validation:**
     - Enter a phone number with country code
     - Click "Validate" to see detailed information
-    - View format, length, carrier, and timezone
+    - View format, length, toll-free status, carrier, and timezone
     
     **2. Batch Processing:**
     - Paste multiple phone numbers (one per line)
@@ -415,6 +441,7 @@ with tab3:
     - **Show Carrier**: Display mobile carrier info
     - **Show Timezone**: Display timezone information
     - **Flag Suspicious**: Highlight suspicious patterns
+    - **Flag Toll-Free**: Highlight toll-free numbers
     
     ### 📋 Validation Features
     
@@ -425,8 +452,14 @@ with tab3:
     
     **Length Validation:**
     - Country-specific length requirements
-    - 84+ countries supported
+    - 90+ countries supported
     - Handles variable-length countries
+    
+    **Toll-Free Detection:**
+    - Identifies toll-free/freephone numbers
+    - 20+ countries with toll-free data
+    - Common prefixes: 800, 888, 1800, 0800, etc.
+    - Examples: US (800, 888, 877), AU (1800, 1300), UK (800, 808)
     
     **Suspicious Detection:**
     - Flags numbers with last 5 identical digits
@@ -435,14 +468,20 @@ with tab3:
     
     ### 🌍 Supported Countries
     
-    **Coverage includes:**
-    - All major countries worldwide
+    **Length Validation Coverage:**
     - Europe: 38 countries
     - Africa: 14 countries
     - Asia: 15 countries
     - Americas: 8 countries
     - Middle East: 7 countries
     - Oceania: 2 countries
+    
+    **Toll-Free Detection Coverage:**
+    - North America: US, Canada, Mexico
+    - Europe: UK, Germany, France, Italy, Spain, Netherlands, Sweden, Switzerland
+    - Asia Pacific: Australia, New Zealand, India, Japan, China, Singapore, Hong Kong
+    - Latin America: Brazil, Argentina, Chile
+    - Africa: South Africa
     
     ### 💡 Tips
     
@@ -451,13 +490,33 @@ with tab3:
     - Empty lines are automatically skipped
     - Leading/trailing whitespace is trimmed
     - Export formats preserve all validation data
+    - Toll-free numbers are identified based on their prefix
     
     ### ⚠️ Important Notes
     
     - Format can be valid while length is invalid
     - Some countries accept variable lengths
+    - Toll-free detection is based on prefix patterns
     - Suspicious flag is based on pattern detection
     - Carrier information may not always be available
+    - Some toll-free prefixes may vary by region within a country
+    
+    ### 📞 Toll-Free Number Examples
+    
+    **United States/Canada:**
+    - 1-800-XXX-XXXX (most common)
+    - 1-888-XXX-XXXX, 1-877-XXX-XXXX, 1-866-XXX-XXXX
+    
+    **Australia:**
+    - 1800-XXX-XXX (fully free)
+    - 1300-XXX-XXX (local call rate)
+    
+    **United Kingdom:**
+    - 0800-XXX-XXXX (freephone)
+    - 0808-XXX-XXXX (freephone)
+    
+    **Germany/France/Italy:**
+    - 800-XXX-XXXX
     """)
 
 # ---- Footer ----
@@ -465,6 +524,6 @@ st.divider()
 st.markdown("""
 <div style='text-align: center; font-size: 14px; color: #6c757d; padding: .5rem 0 1rem'>
     2025 Inspectra. All rights reserved. <br>
-    Inspectra • Phone Number Validator.
+    Inspectra • Phone Number Validator with Toll-Free Detection.
 </div>
 """, unsafe_allow_html=True)
