@@ -124,7 +124,7 @@ st.markdown("""
 st.markdown("""
 <div class="section">
   <div class="section-title">📱 What is this?</div>
-  Validate phone numbers with country-specific length requirements, carrier detection, toll-free detection, and suspicious number flagging — consistent with Inspectra's QA automation UX.
+  Validate phone numbers with country-specific length requirements, carrier detection, toll-free detection, and suspicious number flagging.
 </div>
 """, unsafe_allow_html=True)
 
@@ -514,3 +514,4 @@ st.markdown("""
     Inspectra • Phone Number Validator with Toll-Free Detection.
 </div>
 """, unsafe_allow_html=True)
+
