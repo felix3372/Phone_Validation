@@ -210,7 +210,7 @@ def validate_phone_length(phone_number, country_code):
         return {
             'is_valid_length': is_valid,
             'actual_length': actual_length,
-            'expected_range': (min_length, max_length),
+            'expected_range': f"{min_length} to {max_length} digits",
             'message': message
         }
     else:
