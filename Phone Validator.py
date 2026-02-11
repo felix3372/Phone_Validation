@@ -336,98 +336,120 @@ with tab1:
 with tab2:
     st.subheader("Batch Phone Number Validation")
     
-    col1, col2 = st.columns(2)
+    # Input section - full width at top
+    st.markdown("")
+    batch_input = st.text_area(
+        "Enter multiple phone numbers (one per line):",
+        height=250,
+        placeholder="Example:\n+61872252566\n+18005551234\n+441234567890\n+919876543210",
+        help="Enter one phone number per line",
+        key="batch_input_area"
+    )
     
-    with col1:
-        batch_input = st.text_area(
-            "Enter multiple phone numbers (one per line):",
-            height=300,
-            placeholder="Example:\n+61872252566\n+18005551234\n+441234567890\n+919876543210",
-            help="Enter one phone number per line"
-        )
+    st.markdown("")
+    
+    # Button below input - centered
+    col_left, col_center, col_right = st.columns([2, 1, 2])
+    with col_center:
+        validate_batch_button = st.button("🚀 Validate All Numbers", type="primary", use_container_width=True, key="validate_batch")
+    
+    st.markdown("")
+    
+    # Process validation
+    if validate_batch_button:
+        if batch_input.strip():
+            phone_numbers = [line.strip() for line in batch_input.split('\n') if line.strip()]
+            
+            results = []
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            
+            for idx, phone in enumerate(phone_numbers):
+                status_text.text(f"Processing {idx + 1}/{len(phone_numbers)}...")
+                result = checkphone(phone, display=False)
+                results.append(result)
+                progress_bar.progress((idx + 1) / len(phone_numbers))
+            
+            status_text.success(f"✅ Processed {len(results)} numbers!")
+            progress_bar.empty()
+            
+            df = pd.DataFrame(results)
+            st.session_state['batch_results'] = df
+        else:
+            st.warning("⚠️ Please enter at least one phone number.")
+    
+    # Results section - appears below
+    if 'batch_results' in st.session_state:
+        st.markdown("---")
+        st.markdown("### 📊 Validation Results")
+        st.markdown("")
         
-        if st.button("🚀 Validate Numbers", type="primary", use_container_width=True):
-            if batch_input.strip():
-                phone_numbers = [line.strip() for line in batch_input.split('\n') if line.strip()]
-                
-                results = []
-                progress_bar = st.progress(0)
-                status_text = st.empty()
-                
-                for idx, phone in enumerate(phone_numbers):
-                    status_text.text(f"Processing {idx + 1}/{len(phone_numbers)}...")
-                    result = checkphone(phone, display=False)
-                    results.append(result)
-                    progress_bar.progress((idx + 1) / len(phone_numbers))
-                
-                status_text.success(f"✅ Processed {len(results)} numbers!")
-                progress_bar.empty()
-                
-                df = pd.DataFrame(results)
-                st.session_state['batch_results'] = df
-            else:
-                st.warning("⚠️ Please enter at least one phone number.")
-    
-    with col2:
-        if 'batch_results' in st.session_state:
-            results_df = st.session_state['batch_results']
-            
-            st.markdown(f'<div class="metric-card">✅ Validated {len(results_df)} phone numbers successfully!</div>', 
-                       unsafe_allow_html=True)
-            
-            st.dataframe(results_df, use_container_width=True, height=300)
-            
-            # Summary stats
-            col_a, col_b, col_c, col_d, col_e, col_f = st.columns(6)
-            with col_a:
-                st.metric("Total", len(results_df))
-            with col_b:
-                invalid_format_count = (~results_df['is_valid']).sum()
-                st.metric("Invalid Format", invalid_format_count)
-            with col_c:
-                invalid_length_count = results_df[results_df['is_valid_length'] == False].shape[0]
-                st.metric("Invalid Length", invalid_length_count)
-            with col_d:
-                tollfree_count = results_df['is_tollfree'].sum()
-                st.metric("Toll-Free", tollfree_count)
-            with col_e:
-                suspicious_count = results_df['is_suspicious'].sum()
-                st.metric("Suspicious", suspicious_count)
-            with col_f:
-                valid_count = results_df['is_valid'].sum()
-                st.metric("Valid", valid_count)
-            
-            # Export buttons
-            st.markdown("---")
-            col_x, col_y, col_z = st.columns(3)
-            
-            with col_x:
-                # FIXED: Use quoting to prevent CSV interpretation issues
-                csv_data = results_df.to_csv(index=False, quoting=csv.QUOTE_NONNUMERIC).encode('utf-8')
-                st.download_button(
-                    label="📥 Download CSV",
-                    data=csv_data,
-                    file_name="phone_validation_results.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
-            
-            with col_y:
-                output = BytesIO()
-                with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                    results_df.to_excel(writer, index=False, sheet_name='Phone Validation')
-                output.seek(0)
-                st.download_button(
-                    label="📥 Download Excel",
-                    data=output,
-                    file_name="phone_validation_results.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True
-                )
-            
-            with col_z:
-                json_data = results_df.to_json(orient='records', indent=2)
-                st.download_button(
+        results_df = st.session_state['batch_results']
+        
+        st.markdown(f'<div class="metric-card">✅ Validated {len(results_df)} phone numbers successfully!</div>', 
+                   unsafe_allow_html=True)
+        
+        st.dataframe(results_df, use_container_width=True, height=400)
+        
+        # Summary stats
+        st.markdown("#### 📈 Summary Statistics")
+        col_a, col_b, col_c, col_d, col_e, col_f = st.columns(6)
+        with col_a:
+            st.metric("Total", len(results_df))
+        with col_b:
+            invalid_format_count = (~results_df['is_valid']).sum()
+            st.metric("Invalid Format", invalid_format_count)
+        with col_c:
+            invalid_length_count = results_df[results_df['is_valid_length'] == False].shape[0]
+            st.metric("Invalid Length", invalid_length_count)
+        with col_d:
+            tollfree_count = results_df['is_tollfree'].sum()
+            st.metric("Toll-Free", tollfree_count)
+        with col_e:
+            suspicious_count = results_df['is_suspicious'].sum()
+            st.metric("Suspicious", suspicious_count)
+        with col_f:
+            valid_count = results_df['is_valid'].sum()
+            st.metric("Valid", valid_count)
+        
+        # Export buttons
+        st.markdown("---")
+        st.markdown("#### 📥 Download Options")
+        col_x, col_y, col_z = st.columns(3)
+        
+        with col_x:
+            # FIXED: Use quoting to prevent CSV interpretation issues
+            csv_data = results_df.to_csv(index=False, quoting=csv.QUOTE_NONNUMERIC).encode('utf-8')
+            st.download_button(
+                label="📥 Download CSV",
+                data=csv_data,
+                file_name="phone_validation_results.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+        
+        with col_y:
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                results_df.to_excel(writer, index=False, sheet_name='Phone Validation')
+            output.seek(0)
+            st.download_button(
+                label="📥 Download Excel",
+                data=output,
+                file_name="phone_validation_results.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True
+            )
+        
+        with col_z:
+            json_data = results_df.to_json(orient='records', indent=2)
+            st.download_button(
+                label="📥 Download JSON",
+                data=json_data,
+                file_name="phone_validation_results.json",
+                mime="application/json",
+                use_container_width=True
+            )
                     label="📥 Download JSON",
                     data=json_data,
                     file_name="phone_validation_results.json",
