@@ -307,23 +307,21 @@ tab1, tab2, tab3 = st.tabs(["📱 Single Validation", "📄 Batch Processing", "
 with tab1:
     st.subheader("Single Number Validation")
     
-    col1, col2 = st.columns([3, 1])
+    # Input section - full width
+    phone_input = st.text_input(
+        "Enter a phone number (with country code):",
+        value="",
+        help="Enter the number with country code. The '+' sign is optional.",
+        placeholder="e.g., +1234567890 or 61872252566"
+    )
     
-    with col1:
-        phone_input = st.text_input(
-            "Enter a phone number (with country code):",
-            value="",
-            help="Enter the number with country code. The '+' sign is optional.",
-            placeholder="e.g., +1234567890 or 61872252566"
-        )
+    # Button below input
+    validate_button = st.button("🔍 Validate", type="primary", use_container_width=False)
     
-    with col2:
-        st.write("")
-        st.write("")
-        validate_button = st.button("🔍 Validate", type="primary", use_container_width=True)
-    
+    # Results section - appears below
     if phone_input and validate_button:
         st.markdown("---")
+        st.markdown("### Validation Results")
         checkphone(phone_input)
 
 with tab2:
