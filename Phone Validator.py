@@ -174,20 +174,20 @@ def checkphone(phone_input, display=True):
         is_tollfree = tollfree_result['is_tollfree']
         
         if display:
-            # First row: Valid format, Length, Toll-free
+            # First row: Invalid format, Invalid Length, Toll-free
             col_status1, col_status2, col_status3 = st.columns(3)
             
             with col_status1:
-                if is_valid:
-                    st.success("✅ Valid phone number")
+                if not is_valid:
+                    st.error("❌ Invalid Format")
                 else:
-                    st.error("❌ Invalid phone number")
+                    st.success("✅ Valid Format")
             
             with col_status2:
-                if length_validation['is_valid_length'] is True:
-                    st.success(f"✅ {length_validation['message']}")
-                elif length_validation['is_valid_length'] is False:
-                    st.error(f"❌ {length_validation['message']}")
+                if length_validation['is_valid_length'] is False:
+                    st.error(f"❌ Invalid Length")
+                elif length_validation['is_valid_length'] is True:
+                    st.success(f"✅ Valid Length ({length_validation['actual_length']} digits)")
                 else:
                     st.info(f"ℹ️ {length_validation['message']}")
             
@@ -370,10 +370,11 @@ with tab2:
             with col_a:
                 st.metric("Total", len(results_df))
             with col_b:
-                st.metric("Valid Format", results_df['is_valid'].sum())
+                invalid_format_count = (~results_df['is_valid']).sum()
+                st.metric("Invalid Format", invalid_format_count)
             with col_c:
-                valid_length_count = results_df[results_df['is_valid_length'] == True].shape[0]
-                st.metric("Valid Length", valid_length_count)
+                invalid_length_count = results_df[results_df['is_valid_length'] == False].shape[0]
+                st.metric("Invalid Length", invalid_length_count)
             with col_d:
                 tollfree_count = results_df['is_tollfree'].sum()
                 st.metric("Toll-Free", tollfree_count)
@@ -381,8 +382,8 @@ with tab2:
                 suspicious_count = results_df['is_suspicious'].sum()
                 st.metric("Suspicious", suspicious_count)
             with col_f:
-                invalid_count = (~results_df['is_valid']).sum()
-                st.metric("Invalid", invalid_count)
+                valid_count = results_df['is_valid'].sum()
+                st.metric("Valid", valid_count)
             
             # Export buttons
             st.markdown("---")
