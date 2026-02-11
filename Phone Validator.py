@@ -292,7 +292,7 @@ with tab1:
     with col2:
         st.write("")
         st.write("")
-        validate_button = st.button("🔍 Validate", type="primary", use_container_width=True)
+        validate_button = st.button("🔍 Validate", type="primary", width="stretch")
     
     if phone_input and validate_button:
         st.markdown("---")
@@ -311,7 +311,7 @@ with tab2:
             help="Enter one phone number per line"
         )
         
-        if st.button("🚀 Validate Numbers", type="primary", use_container_width=True):
+        if st.button("🚀 Validate Numbers", type="primary", width="stretch"):
             if batch_input.strip():
                 phone_numbers = [line.strip() for line in batch_input.split('\n') if line.strip()]
                 
@@ -340,7 +340,7 @@ with tab2:
             st.markdown(f'<div class="metric-card">✅ Validated {len(results_df)} phone numbers successfully!</div>', 
                        unsafe_allow_html=True)
             
-            st.dataframe(results_df, use_container_width=True, height=300)
+            st.dataframe(results_df, width="stretch", height=300)
             
             # Summary stats
             col_a, col_b, col_c, col_d, col_e = st.columns(5)
@@ -369,7 +369,7 @@ with tab2:
                     data=csv_data,
                     file_name="phone_validation_results.csv",
                     mime="text/csv",
-                    use_container_width=True
+                    width="stretch"
                 )
             
             with col_y:
@@ -382,7 +382,7 @@ with tab2:
                     data=output,
                     file_name="phone_validation_results.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True
+                    width="stretch"
                 )
             
             with col_z:
@@ -392,7 +392,7 @@ with tab2:
                     data=json_data,
                     file_name="phone_validation_results.json",
                     mime="application/json",
-                    use_container_width=True
+                    width="stretch"
                 )
 
 with tab3:
