@@ -290,6 +290,17 @@ def is_tollfree_number(phone_number, country_name=None, country_code=None):
                 'message': f'Toll-free number (prefix: {prefix})'
             }
     
+    # Universal toll-free pattern check (fallback for countries not in database)
+    # These patterns are widely used globally as toll-free prefixes
+    universal_patterns = ['800', '0800']
+    for pattern in universal_patterns:
+        if phone_str.startswith(pattern):
+            return {
+                'is_tollfree': True,
+                'matched_prefix': pattern,
+                'message': f'Likely toll-free (universal pattern: {pattern})'
+            }
+    
     return {
         'is_tollfree': False,
         'matched_prefix': None,
