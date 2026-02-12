@@ -10,7 +10,7 @@ import csv
 
 # Add utils to path
 sys.path.append(str(Path(__file__).parent))
-from utils.phone_length_validator import validate_phone_length, is_tollfree_number, check_duplicate_country_code
+from utils.phone_length_validator import validate_phone_length, is_tollfree_number
 
 # Page configuration
 st.set_page_config(
@@ -124,7 +124,7 @@ st.markdown("""
 st.markdown("""
 <div class="section">
   <div class="section-title">📱 What is this?</div>
-  Validate phone numbers with country-specific length requirements, carrier detection, toll-free detection, and suspicious number flagging.
+  Validate phone numbers with country-specific length requirements, carrier detection, toll-free detection, and suspicious number flagging — consistent with Inspectra's QA automation UX.
 </div>
 """, unsafe_allow_html=True)
 
@@ -167,14 +167,11 @@ def checkphone(phone_input, display=True):
         # Length validation
         length_validation = validate_phone_length(e164_format, region_code)
         
-        # Duplicate country code check
-        duplicate_check = check_duplicate_country_code(e164_format, region_code)
-        
         # Suspicious pattern check
         is_suspicious = check_suspicious(e164_format)
         
         # Toll-free detection
-        tollfree_result = is_tollfree_number(e164_format, country_code=region_code)
+        tollfree_result = is_tollfree_number(e164_format, country_name=country, country_code=region_code)
         is_tollfree = tollfree_result['is_tollfree']
         
         if display:
@@ -205,10 +202,7 @@ def checkphone(phone_input, display=True):
                 else:
                     st.info("✓ Not toll-free")
             
-            # Suspicious warnings (separate rows if needed)
-            if duplicate_check['has_duplicate']:
-                st.error(f"⚠️ {duplicate_check['message']}: {duplicate_check['detected_pattern']}")
-            
+            # Suspicious warning (separate row if needed)
             if is_suspicious:
                 st.warning("⚠️ Suspicious: Last 5 digits are identical")
             
@@ -233,23 +227,23 @@ def checkphone(phone_input, display=True):
                 st.write(f"**Actual Length:** {length_validation['actual_length']} digits")
         
         # FIXED: expected_range is already a string like "10-11"
+        # Convert all None values to strings to avoid PyArrow errors
         return {
             "original": phone_input,
-            "is_valid": is_valid,
-            "is_valid_length": length_validation['is_valid_length'],
-            "has_duplicate_code": duplicate_check['has_duplicate'],
-            "is_suspicious": is_suspicious,
-            "is_tollfree": is_tollfree,
-            "tollfree_prefix": tollfree_result['matched_prefix'],
-            "tollfree_type": tollfree_result.get('type', None),
-            "country": country if country else "Unknown",
-            "region_code": region_code if region_code else "Unknown",
-            "carrier": sim_carrier if sim_carrier else "Unknown",
-            "international": international_format,
-            "e164": e164_format,
-            "timezone": tz_str,
-            "actual_length": length_validation['actual_length'],
-            "expected_length": length_validation['expected_range'] if length_validation['expected_range'] else "Unknown"
+            "is_valid": bool(is_valid),
+            "is_valid_length": bool(length_validation['is_valid_length']) if length_validation['is_valid_length'] is not None else False,
+            "is_suspicious": bool(is_suspicious),
+            "is_tollfree": bool(is_tollfree),
+            "tollfree_prefix": str(tollfree_result['matched_prefix']) if tollfree_result['matched_prefix'] else "",
+            "tollfree_type": str(tollfree_result.get('type', '')),
+            "country": str(country if country else "Unknown"),
+            "region_code": str(region_code if region_code else "Unknown"),
+            "carrier": str(sim_carrier if sim_carrier else "Unknown"),
+            "international": str(international_format),
+            "e164": str(e164_format),
+            "timezone": str(tz_str),
+            "actual_length": int(length_validation['actual_length']),
+            "expected_length": str(length_validation['expected_range'] if length_validation['expected_range'] else "Unknown")
         }
         
     except Exception as e:
@@ -259,11 +253,10 @@ def checkphone(phone_input, display=True):
             "original": phone_input,
             "is_valid": False,
             "is_valid_length": False,
-            "has_duplicate_code": False,
             "is_suspicious": False,
             "is_tollfree": False,
-            "tollfree_prefix": None,
-            "tollfree_type": None,
+            "tollfree_prefix": "",
+            "tollfree_type": "",
             "country": "Error",
             "region_code": "Error",
             "carrier": "Error",
@@ -401,7 +394,7 @@ with tab2:
         
         # Summary stats
         st.markdown("#### 📈 Summary Statistics")
-        col_a, col_b, col_c, col_d, col_e, col_f, col_g = st.columns(7)
+        col_a, col_b, col_c, col_d, col_e, col_f = st.columns(6)
         with col_a:
             st.metric("Total", len(results_df))
         with col_b:
@@ -411,15 +404,12 @@ with tab2:
             invalid_length_count = results_df[results_df['is_valid_length'] == False].shape[0]
             st.metric("Invalid Length", invalid_length_count)
         with col_d:
-            duplicate_count = results_df['has_duplicate_code'].sum()
-            st.metric("Duplicate Code", duplicate_count)
-        with col_e:
             tollfree_count = results_df['is_tollfree'].sum()
             st.metric("Toll-Free", tollfree_count)
-        with col_f:
+        with col_e:
             suspicious_count = results_df['is_suspicious'].sum()
             st.metric("Suspicious", suspicious_count)
-        with col_g:
+        with col_f:
             valid_count = results_df['is_valid'].sum()
             st.metric("Valid", valid_count)
         
