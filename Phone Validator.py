@@ -10,7 +10,7 @@ import csv
 
 # Add utils to path
 sys.path.append(str(Path(__file__).parent))
-from utils.phone_length_validator import validate_phone_length, is_tollfree_number
+from utils.phone_length_validator import validate_phone_length, is_tollfree_number, check_duplicate_country_code
 
 # Page configuration
 st.set_page_config(
@@ -167,11 +167,14 @@ def checkphone(phone_input, display=True):
         # Length validation
         length_validation = validate_phone_length(e164_format, region_code)
         
+        # Duplicate country code check
+        duplicate_check = check_duplicate_country_code(e164_format, region_code)
+        
         # Suspicious pattern check
         is_suspicious = check_suspicious(e164_format)
         
         # Toll-free detection
-        tollfree_result = is_tollfree_number(e164_format, country_name=country, country_code=region_code)
+        tollfree_result = is_tollfree_number(e164_format, country_code=region_code)
         is_tollfree = tollfree_result['is_tollfree']
         
         if display:
@@ -202,7 +205,10 @@ def checkphone(phone_input, display=True):
                 else:
                     st.info("✓ Not toll-free")
             
-            # Suspicious warning (separate row if needed)
+            # Suspicious warnings (separate rows if needed)
+            if duplicate_check['has_duplicate']:
+                st.error(f"⚠️ {duplicate_check['message']}: {duplicate_check['detected_pattern']}")
+            
             if is_suspicious:
                 st.warning("⚠️ Suspicious: Last 5 digits are identical")
             
@@ -231,6 +237,7 @@ def checkphone(phone_input, display=True):
             "original": phone_input,
             "is_valid": is_valid,
             "is_valid_length": length_validation['is_valid_length'],
+            "has_duplicate_code": duplicate_check['has_duplicate'],
             "is_suspicious": is_suspicious,
             "is_tollfree": is_tollfree,
             "tollfree_prefix": tollfree_result['matched_prefix'],
@@ -252,6 +259,7 @@ def checkphone(phone_input, display=True):
             "original": phone_input,
             "is_valid": False,
             "is_valid_length": False,
+            "has_duplicate_code": False,
             "is_suspicious": False,
             "is_tollfree": False,
             "tollfree_prefix": None,
@@ -393,7 +401,7 @@ with tab2:
         
         # Summary stats
         st.markdown("#### 📈 Summary Statistics")
-        col_a, col_b, col_c, col_d, col_e, col_f = st.columns(6)
+        col_a, col_b, col_c, col_d, col_e, col_f, col_g = st.columns(7)
         with col_a:
             st.metric("Total", len(results_df))
         with col_b:
@@ -403,12 +411,15 @@ with tab2:
             invalid_length_count = results_df[results_df['is_valid_length'] == False].shape[0]
             st.metric("Invalid Length", invalid_length_count)
         with col_d:
+            duplicate_count = results_df['has_duplicate_code'].sum()
+            st.metric("Duplicate Code", duplicate_count)
+        with col_e:
             tollfree_count = results_df['is_tollfree'].sum()
             st.metric("Toll-Free", tollfree_count)
-        with col_e:
+        with col_f:
             suspicious_count = results_df['is_suspicious'].sum()
             st.metric("Suspicious", suspicious_count)
-        with col_f:
+        with col_g:
             valid_count = results_df['is_valid'].sum()
             st.metric("Valid", valid_count)
         
@@ -514,4 +525,3 @@ st.markdown("""
     Inspectra • Phone Number Validator with Toll-Free Detection.
 </div>
 """, unsafe_allow_html=True)
-
