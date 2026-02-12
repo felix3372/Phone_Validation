@@ -1,10 +1,11 @@
 """
 Phone Number Length Validator with Toll-Free Detection
-Validates phone numbers based on country-specific length requirements
-and detects toll-free numbers
+Validates phone numbers based on country-specific length requirements,
+detects toll-free numbers, and identifies duplicate country codes
 """
 
 import phonenumbers
+import re
 
 # Country-specific phone number length requirements (min, max)
 # Based on complete validation data - 90+ countries
@@ -110,34 +111,100 @@ COUNTRY_PHONE_LENGTHS = {
 # Country dial codes mapping (ISO alpha-2 to dial code)
 COUNTRY_DIAL_CODES = {
     # Americas
-    "us": "1", "ca": "1", "mx": "52", "br": "55", "ar": "54", 
-    "cl": "56", "co": "57", "pe": "51", "uy": "598",
+    "US": "1", "CA": "1", "MX": "52", "BR": "55", "AR": "54", 
+    "CL": "56", "CO": "57", "PE": "51", "UY": "598",
     
     # Europe
-    "gb": "44", "de": "49", "fr": "33", "it": "39", "es": "34",
-    "nl": "31", "se": "46", "ch": "41", "at": "43", "be": "32",
-    "pl": "48", "no": "47", "dk": "45", "fi": "358", "ie": "353",
-    "pt": "351", "gr": "30", "cz": "420", "ro": "40", "hu": "36",
-    "bg": "359", "hr": "385", "sk": "421", "si": "386", "lt": "370",
-    "lv": "371", "ee": "372", "cy": "357", "mt": "356", "lu": "352",
-    "al": "355", "ba": "387", "rs": "381", "me": "382", "mk": "389",
-    "md": "373", "tr": "90", "az": "994",
+    "GB": "44", "DE": "49", "FR": "33", "IT": "39", "ES": "34",
+    "NL": "31", "SE": "46", "CH": "41", "AT": "43", "BE": "32",
+    "PL": "48", "NO": "47", "DK": "45", "FI": "358", "IE": "353",
+    "PT": "351", "GR": "30", "CZ": "420", "RO": "40", "HU": "36",
+    "BG": "359", "HR": "385", "SK": "421", "SI": "386", "LT": "370",
+    "LV": "371", "EE": "372", "CY": "357", "MT": "356", "LU": "352",
+    "AL": "355", "BA": "387", "RS": "381", "ME": "382", "MK": "389",
+    "MD": "373", "TR": "90", "AZ": "994",
     
     # Asia Pacific
-    "cn": "86", "jp": "81", "kr": "82", "in": "91", "sg": "65",
-    "hk": "852", "tw": "886", "my": "60", "th": "66", "id": "62",
-    "ph": "63", "vn": "84", "au": "61", "nz": "64", "lk": "94",
-    "kz": "7", "am": "374",
+    "CN": "86", "JP": "81", "KR": "82", "IN": "91", "SG": "65",
+    "HK": "852", "TW": "886", "MY": "60", "TH": "66", "ID": "62",
+    "PH": "63", "VN": "84", "AU": "61", "NZ": "64", "LK": "94",
+    "KZ": "7", "AM": "374",
     
     # Middle East
-    "sa": "966", "ae": "971", "il": "972", "qa": "974", "om": "968",
-    "bh": "973", "jo": "962",
+    "SA": "966", "AE": "971", "IL": "972", "QA": "974", "OM": "968",
+    "BH": "973", "JO": "962",
     
     # Africa
-    "za": "27", "eg": "20", "ng": "234", "ke": "254", "gh": "233",
-    "et": "251", "ug": "256", "zw": "263", "ao": "244", "mz": "258",
-    "na": "264", "bw": "267", "mu": "230", "rw": "250",
+    "ZA": "27", "EG": "20", "NG": "234", "KE": "254", "GH": "233",
+    "ET": "251", "UG": "256", "ZW": "263", "AO": "244", "MZ": "258",
+    "NA": "264", "BW": "267", "MU": "230", "RW": "250",
 }
+
+
+def check_duplicate_country_code(phone_number, country_code):
+    """
+    Check if the country code is duplicated in the phone number
+    Example: +4949XXXXXXXX (Germany's code 49 appears twice)
+    
+    Args:
+        phone_number (str): The full phone number (e.g., '+4949XXXXXXXX')
+        country_code (str): ISO 3166-1 alpha-2 country code (e.g., 'DE')
+    
+    Returns:
+        dict: {
+            'has_duplicate': bool,
+            'country_dial_code': str,
+            'detected_pattern': str or None,
+            'message': str
+        }
+    """
+    # Input validation
+    if not phone_number or not isinstance(phone_number, str):
+        return {
+            'has_duplicate': False,
+            'country_dial_code': None,
+            'detected_pattern': None,
+            'message': 'Invalid phone number input'
+        }
+    
+    # Normalize country code
+    country_code = country_code.upper() if country_code else None
+    
+    if not country_code or country_code not in COUNTRY_DIAL_CODES:
+        return {
+            'has_duplicate': False,
+            'country_dial_code': None,
+            'detected_pattern': None,
+            'message': f'Country code {country_code} not found in database'
+        }
+    
+    # Get the dial code for this country
+    dial_code = COUNTRY_DIAL_CODES[country_code]
+    
+    # Remove all non-digit characters except the leading +
+    clean_number = phone_number.strip()
+    has_plus = clean_number.startswith('+')
+    digits_only = re.sub(r'[^\d]', '', clean_number)
+    
+    # Check if the dial code appears twice at the beginning
+    # Pattern: +{dial_code}{dial_code}... or {dial_code}{dial_code}...
+    duplicate_pattern = dial_code + dial_code
+    
+    if digits_only.startswith(duplicate_pattern):
+        detected = f"+{duplicate_pattern}..." if has_plus else f"{duplicate_pattern}..."
+        return {
+            'has_duplicate': True,
+            'country_dial_code': dial_code,
+            'detected_pattern': detected,
+            'message': 'Country Code Repeated'
+        }
+    
+    return {
+        'has_duplicate': False,
+        'country_dial_code': dial_code,
+        'detected_pattern': None,
+        'message': ''  # Empty for valid cases
+    }
 
 
 def validate_phone_length(phone_number, country_code):
@@ -150,32 +217,50 @@ def validate_phone_length(phone_number, country_code):
     
     Returns:
         dict: {
-            'is_valid_length': bool,
+            'is_valid_length': bool or None,
             'actual_length': int,
-            'expected_range': str or None,
+            'expected_range': tuple or None,
+            'expected_range_display': str,
             'message': str
         }
     """
-    # Remove '+' and any spaces/dashes for length calculation
-    clean_number = phone_number.replace('+', '').replace(' ', '').replace('-', '')
+    # Input validation
+    if not phone_number or not isinstance(phone_number, str):
+        return {
+            'is_valid_length': False,
+            'actual_length': 0,
+            'expected_range': None,
+            'expected_range_display': 'N/A',
+            'message': 'Invalid phone number input'
+        }
+    
+    # Normalize country code to uppercase
+    country_code = country_code.upper() if country_code else None
+    
+    # Remove all non-digit characters for accurate length calculation
+    clean_number = re.sub(r'[^\d]', '', phone_number)
     actual_length = len(clean_number)
     
     # Get expected length range for this country
-    if country_code in COUNTRY_PHONE_LENGTHS:
+    if country_code and country_code in COUNTRY_PHONE_LENGTHS:
         min_length, max_length = COUNTRY_PHONE_LENGTHS[country_code]
         
         is_valid = min_length <= actual_length <= max_length
         
+        # CRITICAL FIX: Use text format with single quotes to prevent Excel date conversion
+        # Format as '10 to 11' instead of '10-11' to avoid date interpretation
+        expected_display = f"'{min_length} to {max_length}'"
+        
         if is_valid:
             message = f"✓ Length is valid ({actual_length} digits)"
         else:
-            message = "Invalid Phone Number Length"
+            message = f"✗ Invalid length (expected {min_length}-{max_length}, got {actual_length})"
         
-        # Return as simple string "10-11" (CSV-safe, won't be interpreted as date)
         return {
             'is_valid_length': is_valid,
             'actual_length': actual_length,
-            'expected_range': f"{min_length}-{max_length}",
+            'expected_range': (min_length, max_length),  # Tuple for programmatic use
+            'expected_range_display': expected_display,   # String safe for CSV/Excel
             'message': message
         }
     else:
@@ -183,18 +268,18 @@ def validate_phone_length(phone_number, country_code):
         return {
             'is_valid_length': None,  # Unknown
             'actual_length': actual_length,
-            'expected_range': "Not defined",
-            'message': "Length Not Pre-Defined"
+            'expected_range': None,
+            'expected_range_display': "'Not defined'",
+            'message': 'Length not pre-defined for this country'
         }
 
 
-def is_tollfree_number(phone_number, country_name=None, country_code=None):
+def is_tollfree_number(phone_number, country_code=None):
     """
     Check if a phone number is a toll-free number using the phonenumbers library
     
     Args:
         phone_number (str): The phone number to check (can be in E.164 format or local format)
-        country_name (str, optional): Full country name (not used, kept for compatibility)
         country_code (str, optional): ISO 3166-1 alpha-2 country code (e.g., 'US', 'AU')
     
     Returns:
@@ -204,16 +289,18 @@ def is_tollfree_number(phone_number, country_name=None, country_code=None):
             'message': str
         }
     """
-    if phone_number is None:
+    if not phone_number or not isinstance(phone_number, str):
         return {
             'is_tollfree': False,
             'matched_prefix': None,
             'message': 'No phone number provided'
         }
     
+    # Normalize country code
+    country_code = country_code.upper() if country_code else None
+    
     try:
         # Parse the phone number
-        # If we have a country code, use it as the region hint
         parsed_number = phonenumbers.parse(phone_number, country_code)
         
         # Check if it's a valid number
@@ -231,15 +318,14 @@ def is_tollfree_number(phone_number, country_name=None, country_code=None):
         is_tollfree = (number_type == phonenumbers.PhoneNumberType.TOLL_FREE)
         
         if is_tollfree:
-            # Extract the prefix for display
-            # Get the national number and extract prefix
+            # Extract the prefix for display (first 3-4 digits of national number)
             national_number = str(parsed_number.national_number)
-            prefix = national_number[:4] if len(national_number) >= 4 else national_number[:3]
+            prefix = national_number[:4] if len(national_number) >= 4 else national_number
             
             return {
                 'is_tollfree': True,
                 'matched_prefix': prefix,
-                'message': 'Toll-free number (verified)'
+                'message': '✓ Toll-free number (verified)'
             }
         else:
             return {
@@ -262,6 +348,34 @@ def is_tollfree_number(phone_number, country_name=None, country_code=None):
         }
 
 
+def validate_phone_complete(phone_number, country_code):
+    """
+    Perform complete validation: length, toll-free status, and duplicate country code check
+    
+    Args:
+        phone_number (str): The full phone number
+        country_code (str): ISO 3166-1 alpha-2 country code
+    
+    Returns:
+        dict: Complete validation results combining all checks
+    """
+    length_result = validate_phone_length(phone_number, country_code)
+    tollfree_result = is_tollfree_number(phone_number, country_code)
+    duplicate_result = check_duplicate_country_code(phone_number, country_code)
+    
+    return {
+        'phone_number': phone_number,
+        'country_code': country_code,
+        'length_validation': length_result,
+        'tollfree_check': tollfree_result,
+        'duplicate_code_check': duplicate_result,
+        'overall_valid': (
+            length_result.get('is_valid_length') == True and 
+            not duplicate_result.get('has_duplicate')
+        )
+    }
+
+
 def get_country_length_info(country_code):
     """
     Get the acceptable phone number length range for a country
@@ -272,6 +386,7 @@ def get_country_length_info(country_code):
     Returns:
         tuple or None: (min_length, max_length) or None if not available
     """
+    country_code = country_code.upper() if country_code else None
     return COUNTRY_PHONE_LENGTHS.get(country_code)
 
 
@@ -284,7 +399,9 @@ def add_country_length(country_code, min_length, max_length):
         min_length (int): Minimum acceptable length
         max_length (int): Maximum acceptable length
     """
-    COUNTRY_PHONE_LENGTHS[country_code] = (min_length, max_length)
+    country_code = country_code.upper() if country_code else None
+    if country_code:
+        COUNTRY_PHONE_LENGTHS[country_code] = (min_length, max_length)
 
 
 def get_all_countries():
@@ -295,3 +412,68 @@ def get_all_countries():
         dict: Dictionary of country codes and their length requirements
     """
     return COUNTRY_PHONE_LENGTHS.copy()
+
+
+def get_country_dial_code(country_code):
+    """
+    Get the dial code for a specific country
+    
+    Args:
+        country_code (str): ISO 3166-1 alpha-2 country code
+    
+    Returns:
+        str or None: Dial code (e.g., '1' for US) or None if not found
+    """
+    country_code = country_code.upper() if country_code else None
+    return COUNTRY_DIAL_CODES.get(country_code)
+
+
+# Example usage and testing
+if __name__ == "__main__":
+    # Test cases - including duplicate country codes for multiple countries
+    test_cases = [
+        # Duplicate country code tests (various countries)
+        ("+4949123456789", "DE"),      # Germany - duplicate 49
+        ("+11234567890", "US"),        # USA - duplicate 1
+        ("+11234567890", "CA"),        # Canada - duplicate 1
+        ("+4444123456789", "GB"),      # UK - duplicate 44
+        ("+3333123456789", "FR"),      # France - duplicate 33
+        ("+6161872252566", "AU"),      # Australia - duplicate 61
+        ("+8686123456789", "CN"),      # China - duplicate 86
+        
+        # Valid numbers (no duplicates)
+        ("+61872252566", "AU"),        # Valid Australian number
+        ("+18001234567", "US"),        # US toll-free
+        ("+442012345678", "GB"),       # Valid UK number
+        ("+33123456789", "FR"),        # Valid French number
+        ("+8613812345678", "CN"),      # Valid Chinese number
+        
+        # Invalid length
+        ("+1234567890", "US"),         # Too short
+    ]
+    
+    print("Phone Number Validation Test Results")
+    print("=" * 80)
+    print("\nTesting Duplicate Country Code Detection Across Multiple Countries:")
+    print("=" * 80)
+    
+    for phone, country in test_cases:
+        print(f"\nPhone: {phone}, Country: {country}")
+        print("-" * 80)
+        
+        result = validate_phone_complete(phone, country)
+        
+        print(f"Length: {result['length_validation']['message']}")
+        print(f"  Expected: {result['length_validation']['expected_range_display']}")
+        print(f"  Actual: {result['length_validation']['actual_length']}")
+        
+        print(f"Toll-free: {result['tollfree_check']['message']}")
+        
+        dup_msg = result['duplicate_code_check']['message']
+        if dup_msg:
+            print(f"⚠️  SUSPICIOUS: {dup_msg}")
+            print(f"  Pattern: {result['duplicate_code_check']['detected_pattern']}")
+        else:
+            print(f"Duplicate Code: ✓ OK")
+        
+        print(f"Overall Valid: {'✓ YES' if result['overall_valid'] else '✗ NO'}")
