@@ -223,16 +223,18 @@ def checkphone(phone_input, display=True):
             with col2:
                 st.write(f"**Carrier:** {sim_carrier if sim_carrier else 'Unknown'}")
                 st.write(f"**Timezone:** {tz_str}")
-                # FIXED: expected_range is now a string, not a tuple
-                if length_validation['expected_range']:
-                    st.write(f"**Expected Length:** {length_validation['expected_range']} digits")
+                # Display expected length range
+                if length_validation.get('expected_range_display'):
+                    # Remove the leading quote for display
+                    display_range = length_validation['expected_range_display'].strip("'")
+                    st.write(f"**Expected Length:** {display_range} digits")
             
             with col3:
                 st.write(f"**International:** {international_format}")
                 st.write(f"**E.164:** {e164_format}")
                 st.write(f"**Actual Length:** {length_validation['actual_length']} digits")
         
-        # FIXED: expected_range is already a string like "10-11"
+        # FIXED: Use display format for CSV/Excel compatibility
         return {
             "original": phone_input,
             "is_valid": is_valid,
@@ -249,7 +251,7 @@ def checkphone(phone_input, display=True):
             "e164": e164_format,
             "timezone": tz_str,
             "actual_length": length_validation['actual_length'],
-            "expected_length": length_validation['expected_range'] if length_validation['expected_range'] else "Unknown"
+            "expected_length": length_validation['expected_range_display'] if length_validation.get('expected_range_display') else "Unknown"
         }
         
     except Exception as e:
