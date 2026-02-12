@@ -228,14 +228,21 @@ def checkphone(phone_input, display=True):
         
         # FIXED: expected_range is already a string like "10-11"
         # Convert all None values to strings to avoid PyArrow errors
+        # Handle is_valid_length which can be None, True, or False
+        valid_length_status = length_validation['is_valid_length']
+        if valid_length_status is None:
+            valid_length_bool = False
+        else:
+            valid_length_bool = bool(valid_length_status)
+        
         return {
             "original": phone_input,
             "is_valid": bool(is_valid),
-            "is_valid_length": bool(length_validation['is_valid_length']) if length_validation['is_valid_length'] is not None else False,
+            "is_valid_length": valid_length_bool,
             "is_suspicious": bool(is_suspicious),
             "is_tollfree": bool(is_tollfree),
             "tollfree_prefix": str(tollfree_result['matched_prefix']) if tollfree_result['matched_prefix'] else "",
-            "tollfree_type": str(tollfree_result.get('type', '')),
+            "tollfree_type": str(tollfree_result.get('type', '')) if tollfree_result.get('type') else "",
             "country": str(country if country else "Unknown"),
             "region_code": str(region_code if region_code else "Unknown"),
             "carrier": str(sim_carrier if sim_carrier else "Unknown"),
@@ -243,7 +250,7 @@ def checkphone(phone_input, display=True):
             "e164": str(e164_format),
             "timezone": str(tz_str),
             "actual_length": int(length_validation['actual_length']),
-            "expected_length": str(length_validation['expected_range'] if length_validation['expected_range'] else "Unknown")
+            "expected_length": str(length_validation['expected_range']) if length_validation['expected_range'] else "Unknown"
         }
         
     except Exception as e:
