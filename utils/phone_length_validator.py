@@ -74,6 +74,7 @@ COUNTRY_PHONE_LENGTHS = {
     "QA": (10, 11),  # Qatar
     "SA": (12, 12),  # Saudi Arabia
     "AE": (10, 12),  # United Arab Emirates
+    "KW": (11,11), # Kuwait
     
     # Asia
     "AM": (11, 11),  # Armenia
