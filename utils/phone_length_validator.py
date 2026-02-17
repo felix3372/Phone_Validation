@@ -275,77 +275,65 @@ def validate_phone_length(phone_number, country_code):
 
 
 def is_tollfree_number(phone_number, country_code=None):
-    """
-    Check if a phone number is a toll-free number using the phonenumbers library
-    
-    Args:
-        phone_number (str): The phone number to check (can be in E.164 format or local format)
-        country_code (str, optional): ISO 3166-1 alpha-2 country code (e.g., 'US', 'AU')
-    
-    Returns:
-        dict: {
-            'is_tollfree': bool,
-            'matched_prefix': str or None,
-            'message': str
-        }
-    """
+
     if not phone_number or not isinstance(phone_number, str):
         return {
             'is_tollfree': False,
             'matched_prefix': None,
             'message': 'No phone number provided'
         }
-    
-    # Normalize country code
+
     country_code = country_code.upper() if country_code else None
-    
+
     try:
-        # Parse the phone number
         parsed_number = phonenumbers.parse(phone_number, country_code)
-        
-        # Check if it's a valid number
+
         if not phonenumbers.is_valid_number(parsed_number):
             return {
                 'is_tollfree': False,
                 'matched_prefix': None,
                 'message': 'Invalid phone number'
             }
-        
-        # Get the number type
-        number_type = phonenumbers.number_type(parsed_number)
-        
-        # Check if it's toll-free
-        is_tollfree = (number_type == phonenumbers.PhoneNumberType.TOLL_FREE)
-        
-        if is_tollfree:
-            # Extract the prefix for display (first 3-4 digits of national number)
-            national_number = str(parsed_number.national_number)
-            prefix = national_number[:4] if len(national_number) >= 4 else national_number
-            
-            return {
-                'is_tollfree': True,
-                'matched_prefix': prefix,
-                'message': '✓ Toll-free number (verified)'
-            }
-        else:
+
+        national_number = str(parsed_number.national_number)
+
+        # 🔴 KUWAIT OVERRIDE (critical)
+        if country_code == "KW":
+            if national_number.startswith("1800"):
+                return {
+                    'is_tollfree': True,
+                    'matched_prefix': "1800",
+                    'message': '✓ Kuwait Toll-free (1800XXX)'
+                }
             return {
                 'is_tollfree': False,
                 'matched_prefix': None,
-                'message': 'Not a toll-free number'
+                'message': 'Not a Kuwait toll-free number'
             }
-    
-    except phonenumbers.phonenumberutil.NumberParseException as e:
+
+        # Default libphonenumber logic
+        number_type = phonenumbers.number_type(parsed_number)
+
+        if number_type == phonenumbers.PhoneNumberType.TOLL_FREE:
+            return {
+                'is_tollfree': True,
+                'matched_prefix': national_number[:4],
+                'message': '✓ Toll-free number (verified)'
+            }
+
         return {
             'is_tollfree': False,
             'matched_prefix': None,
-            'message': f'Error parsing number: {str(e)}'
+            'message': 'Not a toll-free number'
         }
+
     except Exception as e:
         return {
             'is_tollfree': False,
             'matched_prefix': None,
             'message': f'Error: {str(e)}'
         }
+
 
 
 def validate_phone_complete(phone_number, country_code):
